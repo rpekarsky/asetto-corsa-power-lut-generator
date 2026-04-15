@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F1 LUT Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script type="module" crossorigin>(function(){const a=document.createElement("link").relList;if(a&&a.supports&&a.supports("modulepreload"))return;for(const r of document.querySelectorAll('link[rel="modulepreload"]'))l(r);new MutationObserver(r=>{for(const t of r)if(t.type==="childList")for(const e of t.addedNodes)e.tagName==="LINK"&&e.rel==="modulepreload"&&l(e)}).observe(document,{childList:!0,subtree:!0});function c(r){const t={};return r.integrity&&(t.integrity=r.integrity),r.referrerPolicy&&(t.referrerPolicy=r.referrerPolicy),r.crossOrigin==="use-credentials"?t.credentials="include":r.crossOrigin==="anonymous"?t.credentials="omit":t.credentials="same-origin",t}function l(r){if(r.ep)return;r.ep=!0;const t=c(r);fetch(r.href,t)}})();const R={v8:{powerRange:[680,800],charOptions:["early","flat"],rpmPref:13500},v10:{powerRange:[790,850],charOptions:["mid","flat"],rpmPref:13500},v12:{powerRange:[840,920],charOptions:["late","sharp"],rpmPref:15e3},v40:{powerRange:[820,880],charOptions:["sharp","mid"],rpmPref:16500}},L={early:["broad torque","low-end pull","forgiving"],mid:["balanced","smooth delivery","versatile"],late:["high-rev","narrow band","aggressive"],sharp:["peaky","fast spin","technical"],flat:["wide plateau","consistent","easy to drive"]},A=["THUNDER","ECLIPSE","NOVA RACING","IRON WOLF","ZENITH","APEX","STORM","PHANTOM","SIGMA","DELTA FORCE"],B=["Hartwell V8","Kronos V10","Atlas V12","Lumina V10","Viper V8","Olympus V12","Nexus V10","Titan V8","Helix V12","Pulsar V10"],O=["v8","v10","v12","v40"],k=["early","mid","late","sharp","flat"],C=["12000","13500","15000","16500"];function V(o,a,c=18){const l=[];for(let r=0;r<=c;r++){const t=r/c;let e;o==="early"?(e=Math.pow(Math.sin(t*Math.PI*.95),.6)*(t<.5?1.15:1),e=Math.min(e,1)):o==="late"?(e=Math.pow(Math.sin(t*Math.PI*.85+.08),.75),t<.15&&(e*=t/.15)):o==="sharp"?(e=Math.exp(-Math.pow((t-.7)/.22,2)),t<.1&&(e*=t/.1)):o==="flat"?t<.25?e=t/.25:t<.75?e=1-.05*Math.sin((t-.25)/.5*Math.PI):e=Math.pow(1-(t-.75)/.25,1.2):(e=Math.pow(Math.sin(t*Math.PI*.9+.05),.65),t<.1&&(e*=t/.1)),e=Math.max(0,e),l.push({r:t,t:e})}return l.map(r=>({r:r.r,t:Math.min(1,r.t*(1+(Math.random()-.5)*.06))}))}function H(o,a,c){const l=new Map;return o.forEach(r=>{const t=Math.round(r.r*a/900)*900,e=Math.round(r.t*c);l.set(t,e)}),Array.from(l,([r,t])=>({rpm:r,torque:t}))}function F(o,a){return o*735.5/(a*Math.PI/30)}function b(o,a,c,l,r){const t=o.parentElement,e=o.getContext("2d"),d=t.clientWidth,u=t.clientHeight;o.width=d*window.devicePixelRatio,o.height=u*window.devicePixelRatio,e.scale(window.devicePixelRatio,window.devicePixelRatio);const s={l:48,r:48,t:10,b:30};e.clearRect(0,0,d,u),e.strokeStyle="rgba(42,42,74,0.8)",e.lineWidth=.5;for(let i=0;i<=4;i++){const n=s.t+(u-s.t-s.b)*i/4;e.beginPath(),e.moveTo(s.l,n),e.lineTo(d-s.r,n),e.stroke()}for(let i=0;i<=c;i+=3e3){const n=s.l+(d-s.l-s.r)*i/c;e.beginPath(),e.moveTo(n,s.t),e.lineTo(n,u-s.b),e.stroke(),e.fillStyle="rgba(96,96,128,0.7)",e.font="9px Share Tech Mono, monospace",e.textAlign="center",e.fillText((i/1e3).toFixed(0)+"k",n,u-s.b+14)}function m(i){return s.l+(d-s.l-s.r)*i/c}function y(i,n){return s.t+(u-s.t-s.b)*(1-i/n)}const T=a.map(i=>i.torque*i.rpm*Math.PI/30/735.5),M=Math.max(...T)*1.08,P=l*1.08;e.beginPath(),e.strokeStyle="#e84060",e.lineWidth=1.5,a.forEach((i,n)=>{const h=m(i.rpm),x=y(T[n],M);n===0?e.moveTo(h,x):e.lineTo(h,x)}),e.stroke(),e.beginPath(),e.strokeStyle="#e8c840",e.lineWidth=2,a.forEach((i,n)=>{const h=m(i.rpm),x=y(i.torque,P);n===0?e.moveTo(h,x):e.lineTo(h,x)}),e.stroke(),e.fillStyle="rgba(96,96,128,0.7)",e.font="9px Share Tech Mono, monospace",e.textAlign="right";for(let i=0;i<=4;i++){const n=Math.round(l*1.05*(1-i/4));e.fillText(String(n),s.l-4,s.t+(u-s.t-s.b)*i/4+3)}}let w=[],I=[];function p(o){return document.getElementById(o).value}function g(o,a){document.getElementById(o).value=a}function f(o,a){document.getElementById(o).textContent=a}function E(o){return o[Math.floor(Math.random()*o.length)]}function N(){const o=p("teamName").trim().toUpperCase()||"UNNAMED",a=p("engineName").trim()||"—",c=p("engineType"),l=p("character"),r=parseInt(p("maxRpm"));let t=parseInt(p("maxPower"));if(isNaN(t)||t<500||t>1200){const n=R[c].powerRange;t=n[0]+Math.round(Math.random()*(n[1]-n[0])),g("maxPower",String(t))}const e=V(l);let d=0;e.forEach((n,h)=>{n.t>e[d].t&&(d=h)});const u=Math.round(e[d].r*r/900)*900,s=F(t,u),m=H(e,r,s);m[0].torque=0,m[1].torque=0,w=m,I=m.map(n=>({rpm:n.rpm,torque:Math.round(n.torque*.81)}));const y=Math.round(s);f("statTorque",y+" N·m"),f("statRpm",u.toLocaleString()+" RPM"),f("statPower",t+" PS");const T=m.find(n=>n.torque>s*.85)?.rpm||0,v=[...m].reverse().find(n=>n.torque>s*.85)?.rpm||0;f("statBand",(T/1e3).toFixed(1)+"k – "+(v/1e3).toFixed(1)+"k");const M=document.getElementById("displayTeam");M.textContent=o,M.classList.add("flash"),setTimeout(()=>M.classList.remove("flash"),400),f("displayEngine",a+" · "+c.toUpperCase()),document.getElementById("displayPower").innerHTML=t+"<br><span>PS · 7-speed</span>";const P=L[l]||[];document.getElementById("displayTags").innerHTML=P.map(n=>`<span class="tag active">${n}</span>`).join(""),f("lutTorque",m.map(n=>`${n.rpm}|${n.torque}`).join(`
+`)),f("lutAuto",I.map(n=>`${n.rpm}|${n.torque}`).join(`
+`));const i=document.getElementById("chart");b(i,m,r,y)}function S(){const o=E(O),a=R[o],c=a.powerRange[0]+Math.round(Math.random()*(a.powerRange[1]-a.powerRange[0]));g("engineType",o),g("character",E(k)),g("maxRpm",E(C)),g("maxPower",String(c)),g("teamName",E(A)),g("engineName",E(B)),N()}function q(o){const a=document.getElementById(o==="torque"?"lutTorque":"lutAuto");navigator.clipboard.writeText(a.textContent||"").then(()=>{a.style.color="var(--green)",setTimeout(()=>a.style.color="var(--accent2)",600)})}function W(){if(w.length){const o=Math.max(...w.map(l=>l.torque));parseInt(p("maxPower"));const a=parseInt(p("maxRpm")),c=document.getElementById("chart");b(c,w,a,o)}}document.getElementById("btnGenerate").addEventListener("click",N);document.getElementById("btnRandomize").addEventListener("click",S);document.getElementById("btnCopyTorque").addEventListener("click",()=>q("torque"));document.getElementById("btnCopyAuto").addEventListener("click",()=>q("auto"));window.addEventListener("resize",W);S();</script>
+  <style rel="stylesheet" crossorigin>*,*:before,*:after{box-sizing:border-box;margin:0;padding:0}:root{--bg: #0a0a0f;--bg2: #0f0f1a;--bg3: #141428;--panel: #12121f;--border: #2a2a4a;--accent: #e8c840;--accent2: #40c8e8;--accent3: #e84060;--text: #d0d0e8;--muted: #606080;--green: #40e880}body{background:var(--bg);color:var(--text);font-family:Share Tech Mono,monospace;min-height:100vh;overflow-x:hidden}body:before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.08) 2px,rgba(0,0,0,.08) 4px);pointer-events:none;z-index:1000}header{padding:2rem 2rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:1.5rem}h1{font-family:Orbitron,sans-serif;font-weight:900;font-size:1.6rem;color:var(--accent);letter-spacing:.15em;text-transform:uppercase}.subtitle{font-size:.75rem;color:var(--muted);letter-spacing:.1em}.main{display:grid;grid-template-columns:340px 1fr;gap:0;height:calc(100vh - 80px)}.sidebar{border-right:1px solid var(--border);padding:1.5rem;display:flex;flex-direction:column;gap:1.2rem;overflow-y:auto}.field-group{display:flex;flex-direction:column;gap:.4rem}label{font-size:.65rem;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}input[type=text],select{background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:Share Tech Mono,monospace;font-size:.85rem;padding:.5rem .7rem;width:100%;outline:none;transition:border-color .2s}input[type=text]:focus,select:focus{border-color:var(--accent)}select option{background:var(--bg3)}.row2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.stat-row{display:flex;justify-content:space-between;font-size:.75rem;padding:.3rem 0;border-bottom:1px solid var(--border)}.stat-row span:last-child{color:var(--accent)}.btn{font-family:Orbitron,sans-serif;font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.7rem 1.2rem;border:1px solid;cursor:pointer;transition:all .15s;width:100%}.btn-primary{background:var(--accent);color:#000;border-color:var(--accent)}.btn-primary:hover{background:#ffd800;border-color:#ffd800}.btn-primary:active{transform:scale(.98)}.btn-secondary{background:transparent;color:var(--accent2);border-color:var(--accent2)}.btn-secondary:hover{background:#40c8e814}.btn-copy{background:transparent;color:var(--green);border-color:var(--green)}.btn-copy:hover{background:#40e88014}.divider{border:none;border-top:1px solid var(--border)}.content{display:grid;grid-template-rows:1fr 200px;overflow:hidden}.chart-area{padding:1.5rem 2rem 1rem;position:relative;display:flex;flex-direction:column;overflow:hidden}.chart-wrap{flex:1;min-height:0;position:relative}.chart-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}.team-name-display{font-family:Orbitron,sans-serif;font-size:1.4rem;font-weight:900;color:var(--accent);letter-spacing:.1em;text-shadow:0 0 20px rgba(232,200,64,.4)}.engine-display{font-size:.75rem;color:var(--muted);margin-top:.2rem;letter-spacing:.08em}.power-badge{font-family:Orbitron,sans-serif;font-size:2rem;font-weight:900;color:var(--accent);text-align:right;line-height:1}.power-badge span{font-size:.8rem;color:var(--muted)}canvas{width:100%;height:100%;display:block}.legend{display:flex;gap:1.5rem;margin-top:.5rem;font-size:.7rem;color:var(--muted)}.legend-item{display:flex;align-items:center;gap:.4rem}.legend-dot{width:24px;height:2px}.lut-area{border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr}.lut-panel{padding:1rem 1.5rem;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:.6rem}.lut-panel:last-child{border-right:none}.lut-label{font-size:.6rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}.lut-label button{font-family:Share Tech Mono,monospace;font-size:.6rem;background:transparent;border:1px solid var(--green);color:var(--green);padding:.1rem .5rem;cursor:pointer;letter-spacing:.08em}.lut-label button:hover{background:#40e8801a}.lut-output{font-size:.72rem;color:var(--accent2);line-height:1.6;overflow-y:auto;max-height:140px;white-space:pre}.tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.3rem}.tag{font-size:.6rem;padding:.2rem .5rem;border:1px solid var(--border);color:var(--muted);letter-spacing:.08em}.tag.active{border-color:var(--accent);color:var(--accent)}.flash{animation:flash .3s ease}@keyframes flash{0%{opacity:1}50%{opacity:.3}to{opacity:1}}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border)}</style>
+</head>
+<body>
+
+<header>
+  <h1>F1 Power LUT Generator</h1>
+  <span class="subtitle">// Assetto Corsa · engine torque curves</span>
+</header>
+
+<div class="main">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="field-group">
+      <label>Team Name</label>
+      <input type="text" id="teamName" placeholder="e.g. ROSSO CORSA" value="">
+    </div>
+
+    <div class="field-group">
+      <label>Engine Name</label>
+      <input type="text" id="engineName" placeholder="e.g. Ferrari V12" value="">
+    </div>
+
+    <div class="row2">
+      <div class="field-group">
+        <label>Engine Type</label>
+        <select id="engineType">
+          <option value="v8">V8</option>
+          <option value="v10" selected>V10</option>
+          <option value="v12">V12</option>
+          <option value="v40">V40 (exotic)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Max Power (PS)</label>
+        <input type="text" id="maxPower" placeholder="750–900" value="">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label>Power Character</label>
+      <select id="character">
+        <option value="early">Early peak (V8 style)</option>
+        <option value="mid" selected>Mid peak (V10 balanced)</option>
+        <option value="late">Late peak (V12 high-rev)</option>
+        <option value="sharp">Sharp & aggressive</option>
+        <option value="flat">Flat torque plateau</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label>Max RPM</label>
+      <select id="maxRpm">
+        <option value="12000">12 000</option>
+        <option value="13500" selected>13 500</option>
+        <option value="15000">15 000</option>
+        <option value="16500">16 500</option>
+      </select>
+    </div>
+
+    <hr class="divider">
+
+    <div class="field-group">
+      <label>Computed Stats</label>
+      <div class="stat-row"><span>Peak Torque</span><span id="statTorque">—</span></div>
+      <div class="stat-row"><span>Peak at RPM</span><span id="statRpm">—</span></div>
+      <div class="stat-row"><span>Power (7-speed)</span><span id="statPower">—</span></div>
+      <div class="stat-row"><span>Usable RPM band</span><span id="statBand">—</span></div>
+    </div>
+
+    <hr class="divider">
+
+    <button class="btn btn-primary" id="btnGenerate">⚡ GENERATE</button>
+    <button class="btn btn-secondary" id="btnRandomize">🎲 RANDOMIZE ALL</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <div class="chart-area">
+      <div class="chart-header">
+        <div>
+          <div class="team-name-display" id="displayTeam">—</div>
+          <div class="engine-display" id="displayEngine">—</div>
+          <div class="tags" id="displayTags"></div>
+        </div>
+        <div class="power-badge" id="displayPower">—<br><span>PS · 7-speed</span></div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div> Torque (N·m)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div> Power (bhp)</div>
+      </div>
+    </div>
+
+    <div class="lut-area">
+      <div class="lut-panel">
+        <div class="lut-label">
+          power.lut (torque)
+          <button id="btnCopyTorque">COPY</button>
+        </div>
+        <div class="lut-output" id="lutTorque">// press GENERATE</div>
+      </div>
+      <div class="lut-panel">
+        <div class="lut-label">
+          power_auto.lut (~81%)
+          <button id="btnCopyAuto">COPY</button>
+        </div>
+        <div class="lut-output" id="lutAuto">// press GENERATE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
