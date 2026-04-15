@@ -54,13 +54,19 @@
     </div>
 
     <div class="field-group">
-      <label>Max RPM</label>
+      <label>Max RPM <button type="button" class="btn-edit" id="btnToggleRpm" title="Custom value">✎</button></label>
       <select id="maxRpm">
         <option value="12000">12 000</option>
         <option value="13500" selected>13 500</option>
         <option value="15000">15 000</option>
         <option value="16500">16 500</option>
       </select>
+      <input type="text" id="maxRpmCustom" class="hidden" placeholder="e.g. 14200" value="">
+    </div>
+
+    <div class="field-group">
+      <label>LUT Step (RPM)</label>
+      <input type="text" id="lutStep" placeholder="500" value="500">
     </div>
 
     <hr class="divider">
@@ -75,12 +81,13 @@
 
     <hr class="divider">
 
-    <div class="field-group">
-      <label>Seed</label>
-      <input type="text" id="seed" placeholder="auto" value="">
+    <div class="seed-row">
+      <div class="field-group" style="flex:1">
+        <label>Seed</label>
+        <input type="text" id="seed" placeholder="auto" value="">
+      </div>
+      <button class="btn btn-primary btn-generate" id="btnGenerate">⚡ NEW</button>
     </div>
-
-    <button class="btn btn-primary" id="btnGenerate">⚡ GENERATE</button>
     <button class="btn btn-secondary" id="btnRandomize">🎲 RANDOMIZE ALL</button>
   </div>
 

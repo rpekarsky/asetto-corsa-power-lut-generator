@@ -12,6 +12,7 @@ export function syncInputs(state: AppState, refs: DomRefs): void {
   refs.inputs.character.value = inputs.character;
   refs.inputs.maxRpm.value = String(inputs.maxRpm);
   refs.inputs.maxPower.value = String(inputs.maxPower);
+  refs.inputs.lutStep.value = String(inputs.lutStep);
   refs.inputs.seed.value = String(inputs.seed);
 }
 

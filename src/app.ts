@@ -12,28 +12,26 @@ function newSeed(): number {
   return Math.floor(Math.random() * 0xFFFFFFFF);
 }
 
-/** Read current input values from DOM into typed state */
+function isCustomRpmMode(refs: DomRefs): boolean {
+  return !refs.inputs.maxRpmCustom.classList.contains('hidden');
+}
+
+/** Read current input values from DOM into typed state — no validation, no coercion */
 function readInputs(refs: DomRefs): InputState {
-  const engineType = refs.inputs.engineType.value as EngineType;
-  let maxPower = parseInt(refs.inputs.maxPower.value);
-  const maxRpm = parseInt(refs.inputs.maxRpm.value);
-
-  if (isNaN(maxPower) || maxPower < 500 || maxPower > 1200) {
-    const [lo, hi] = engineDefaults[engineType].powerRange;
-    maxPower = lo + Math.round(Math.random() * (hi - lo));
-  }
-
   const seedValue = refs.inputs.seed.value.trim();
-  const seed = seedValue ? (parseInt(seedValue) || 0) : newSeed();
+  const rpmSource = isCustomRpmMode(refs)
+    ? refs.inputs.maxRpmCustom.value
+    : refs.inputs.maxRpm.value;
 
   return {
     teamName: refs.inputs.teamName.value,
     engineName: refs.inputs.engineName.value,
-    engineType,
+    engineType: refs.inputs.engineType.value as EngineType,
     character: refs.inputs.character.value as PowerCharacter,
-    maxRpm: isNaN(maxRpm) ? 13500 : maxRpm,
-    maxPower,
-    seed,
+    maxRpm: parseInt(rpmSource) || 13500,
+    maxPower: parseInt(refs.inputs.maxPower.value) || 820,
+    seed: seedValue ? (parseInt(seedValue) || 0) : newSeed(),
+    lutStep: parseInt(refs.inputs.lutStep.value) || 500,
   };
 }
 
@@ -43,11 +41,25 @@ export function createApp(refs: DomRefs) {
     computed: null,
   };
 
-  function generate() {
+  let debounceTimer: ReturnType<typeof setTimeout>;
+
+  function update() {
     state.inputs = readInputs(refs);
     state.computed = compute(state.inputs);
     syncInputs(state, refs);
     render(state, refs);
+  }
+
+  /** Generate = new seed + recompute */
+  function generate() {
+    refs.inputs.seed.value = '';
+    update();
+  }
+
+  /** Debounced update for live parameter changes */
+  function debouncedUpdate() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(update, 250);
   }
 
   function randomize() {
@@ -58,12 +70,15 @@ export function createApp(refs: DomRefs) {
     refs.inputs.engineType.value = et;
     refs.inputs.character.value = pick(CHARACTERS);
     refs.inputs.maxRpm.value = pick(RPMS);
+    refs.inputs.maxRpm.classList.remove('hidden');
+    refs.inputs.maxRpmCustom.classList.add('hidden');
+    refs.buttons.toggleRpm.classList.remove('active');
     refs.inputs.maxPower.value = String(ps);
     refs.inputs.teamName.value = pick(TEAM_NAMES);
     refs.inputs.engineName.value = pick(ENGINE_NAMES);
     refs.inputs.seed.value = '';
 
-    generate();
+    update();
   }
 
   function copyLut(which: 'torque' | 'auto') {
@@ -74,9 +89,28 @@ export function createApp(refs: DomRefs) {
     });
   }
 
+  function toggleRpm() {
+    const custom = refs.inputs.maxRpmCustom;
+    const select = refs.inputs.maxRpm;
+    const btn = refs.buttons.toggleRpm;
+    const goingCustom = custom.classList.contains('hidden');
+
+    if (goingCustom) {
+      custom.value = select.value;
+      select.classList.add('hidden');
+      custom.classList.remove('hidden');
+      btn.classList.add('active');
+      custom.focus();
+    } else {
+      select.classList.remove('hidden');
+      custom.classList.add('hidden');
+      btn.classList.remove('active');
+    }
+  }
+
   function handleResize() {
     redrawChart(state, refs);
   }
 
-  return { generate, randomize, copyLut, handleResize };
+  return { generate, update, debouncedUpdate, randomize, copyLut, handleResize, toggleRpm };
 }

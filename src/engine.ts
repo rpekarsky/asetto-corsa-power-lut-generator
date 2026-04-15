@@ -11,7 +11,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function buildShape(character: PowerCharacter, seed: number, steps = 18): ShapePoint[] {
+function buildShape(character: PowerCharacter, seed: number, steps = 24): ShapePoint[] {
   const rand = mulberry32(seed);
   const pts: ShapePoint[] = [];
 
@@ -49,25 +49,63 @@ function buildShape(character: PowerCharacter, seed: number, steps = 18): ShapeP
   }));
 }
 
-function computeLut(pts: ShapePoint[], maxRpm: number, maxTorqueNm: number): LutPoint[] {
-  const map = new Map<number, number>();
+/** Linearly interpolate shape at ratio r (0..1) */
+function interpolateShape(pts: ShapePoint[], r: number): number {
+  if (r <= 0) return pts[0].t;
+  if (r >= 1) return pts[pts.length - 1].t;
 
-  for (const p of pts) {
-    const rpm = Math.round(p.r * maxRpm / 900) * 900;
-    const torque = Math.round(p.t * maxTorqueNm);
-    map.set(rpm, torque);
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].r >= r) {
+      const prev = pts[i - 1];
+      const next = pts[i];
+      const frac = (r - prev.r) / (next.r - prev.r);
+      return prev.t + (next.t - prev.t) * frac;
+    }
+  }
+  return pts[pts.length - 1].t;
+}
+
+/** Build RPM grid: half-step at edges (first/last 15%), full step in the middle */
+function buildRpmGrid(maxRpm: number, step: number): number[] {
+  step = Math.max(100, Math.abs(step) || 500);
+  const fineStep = Math.round(step / 2);
+  const edgeThreshold = maxRpm * 0.15;
+  const rpms: number[] = [0];
+
+  let rpm = fineStep;
+  while (rpm <= maxRpm) {
+    rpms.push(rpm);
+    const currentStep = (rpm < edgeThreshold || rpm > maxRpm - edgeThreshold) ? fineStep : step;
+    rpm += currentStep;
   }
 
-  return Array.from(map, ([rpm, torque]) => ({ rpm, torque }));
+  if (rpms[rpms.length - 1] !== maxRpm) {
+    rpms.push(maxRpm);
+  }
+
+  return rpms;
+}
+
+function computeLut(shape: ShapePoint[], maxRpm: number, maxTorqueNm: number, step: number): LutPoint[] {
+  const grid = buildRpmGrid(maxRpm, step);
+
+  return grid.map(rpm => {
+    const r = rpm / maxRpm;
+    const t = interpolateShape(shape, r);
+    return { rpm, torque: Math.round(t * maxTorqueNm) };
+  });
 }
 
 function powerToTorque(ps: number, rpm: number): number {
   return (ps * 735.5) / (rpm * Math.PI / 30);
 }
 
+// test-only exports
+export const _test = { buildShape, buildRpmGrid, interpolateShape, computeLut };
+
 /** Pure computation: inputs → result. No DOM, no side effects. */
 export function compute(inputs: InputState): ComputedResult {
-  const { character, maxRpm, maxPower, seed } = inputs;
+  const { character, maxRpm, maxPower, seed, lutStep } = inputs;
 
   const shape = buildShape(character, seed);
 
@@ -77,9 +115,12 @@ export function compute(inputs: InputState): ComputedResult {
 
   const maxTorqueNm = powerToTorque(maxPower, peakRpm);
 
-  const lut = computeLut(shape, maxRpm, maxTorqueNm);
-  lut[0].torque = 0;
-  lut[1].torque = 0;
+  const lut = computeLut(shape, maxRpm, maxTorqueNm, lutStep);
+  // zero torque at idle
+  for (const p of lut) {
+    if (p.rpm <= 300) p.torque = 0;
+    else break;
+  }
 
   const lutAuto = lut.map(p => ({ rpm: p.rpm, torque: Math.round(p.torque * 0.81) }));
 

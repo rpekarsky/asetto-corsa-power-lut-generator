@@ -27,6 +27,7 @@ export interface InputState {
   maxRpm: number;
   maxPower: number;
   seed: number;
+  lutStep: number;
 }
 
 export interface ComputedResult {

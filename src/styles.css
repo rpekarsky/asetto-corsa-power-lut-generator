@@ -147,6 +147,17 @@ select option {
 .btn-primary:hover { background: #ffd800; border-color: #ffd800; }
 .btn-primary:active { transform: scale(0.98); }
 
+.seed-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+.btn-generate {
+  width: auto;
+  white-space: nowrap;
+  padding: 0.5rem 1rem;
+}
+
 .btn-secondary {
   background: transparent;
   color: var(--accent2);
@@ -310,6 +321,21 @@ canvas {
   50% { opacity: 0.3; }
   100% { opacity: 1; }
 }
+
+.hidden { display: none !important; }
+
+.btn-edit {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 0.2rem;
+  margin-left: 0.3rem;
+  transition: color 0.15s;
+}
+.btn-edit:hover { color: var(--accent); }
+.btn-edit.active { color: var(--accent); }
 
 /* scrollbar */
 ::-webkit-scrollbar { width: 4px; }

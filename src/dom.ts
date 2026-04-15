@@ -5,7 +5,9 @@ export interface DomRefs {
     engineType: HTMLSelectElement;
     character: HTMLSelectElement;
     maxRpm: HTMLSelectElement;
+    maxRpmCustom: HTMLInputElement;
     maxPower: HTMLInputElement;
+    lutStep: HTMLInputElement;
     seed: HTMLInputElement;
   };
   stats: {
@@ -30,6 +32,7 @@ export interface DomRefs {
     randomize: HTMLElement;
     copyTorque: HTMLElement;
     copyAuto: HTMLElement;
+    toggleRpm: HTMLElement;
   };
 }
 
@@ -47,7 +50,9 @@ export function collectRefs(): DomRefs {
       engineType: ref<HTMLSelectElement>('engineType'),
       character: ref<HTMLSelectElement>('character'),
       maxRpm: ref<HTMLSelectElement>('maxRpm'),
+      maxRpmCustom: ref<HTMLInputElement>('maxRpmCustom'),
       maxPower: ref<HTMLInputElement>('maxPower'),
+      lutStep: ref<HTMLInputElement>('lutStep'),
       seed: ref<HTMLInputElement>('seed'),
     },
     stats: {
@@ -72,6 +77,7 @@ export function collectRefs(): DomRefs {
       randomize: ref('btnRandomize'),
       copyTorque: ref('btnCopyTorque'),
       copyAuto: ref('btnCopyAuto'),
+      toggleRpm: ref('btnToggleRpm'),
     },
   };
 }
