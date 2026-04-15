@@ -1,11 +1,14 @@
 import './styles.css';
-import { generate, randomize, copyLut, handleResize } from './ui';
+import { collectRefs } from './dom';
+import { createApp } from './app';
 
-document.getElementById('btnGenerate')!.addEventListener('click', generate);
-document.getElementById('btnRandomize')!.addEventListener('click', randomize);
-document.getElementById('btnCopyTorque')!.addEventListener('click', () => copyLut('torque'));
-document.getElementById('btnCopyAuto')!.addEventListener('click', () => copyLut('auto'));
+const refs = collectRefs();
+const app = createApp(refs);
 
-window.addEventListener('resize', handleResize);
+refs.buttons.generate.addEventListener('click', app.generate);
+refs.buttons.randomize.addEventListener('click', app.randomize);
+refs.buttons.copyTorque.addEventListener('click', () => app.copyLut('torque'));
+refs.buttons.copyAuto.addEventListener('click', () => app.copyLut('auto'));
+window.addEventListener('resize', app.handleResize);
 
-randomize();
+app.randomize();

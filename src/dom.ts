@@ -1,0 +1,77 @@
+export interface DomRefs {
+  inputs: {
+    teamName: HTMLInputElement;
+    engineName: HTMLInputElement;
+    engineType: HTMLSelectElement;
+    character: HTMLSelectElement;
+    maxRpm: HTMLSelectElement;
+    maxPower: HTMLInputElement;
+    seed: HTMLInputElement;
+  };
+  stats: {
+    torque: HTMLElement;
+    rpm: HTMLElement;
+    power: HTMLElement;
+    band: HTMLElement;
+  };
+  display: {
+    team: HTMLElement;
+    engine: HTMLElement;
+    power: HTMLElement;
+    tags: HTMLElement;
+  };
+  lut: {
+    torque: HTMLElement;
+    auto: HTMLElement;
+  };
+  chart: HTMLCanvasElement;
+  buttons: {
+    generate: HTMLElement;
+    randomize: HTMLElement;
+    copyTorque: HTMLElement;
+    copyAuto: HTMLElement;
+  };
+}
+
+function ref<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing DOM element: #${id}`);
+  return el as T;
+}
+
+export function collectRefs(): DomRefs {
+  return {
+    inputs: {
+      teamName: ref<HTMLInputElement>('teamName'),
+      engineName: ref<HTMLInputElement>('engineName'),
+      engineType: ref<HTMLSelectElement>('engineType'),
+      character: ref<HTMLSelectElement>('character'),
+      maxRpm: ref<HTMLSelectElement>('maxRpm'),
+      maxPower: ref<HTMLInputElement>('maxPower'),
+      seed: ref<HTMLInputElement>('seed'),
+    },
+    stats: {
+      torque: ref('statTorque'),
+      rpm: ref('statRpm'),
+      power: ref('statPower'),
+      band: ref('statBand'),
+    },
+    display: {
+      team: ref('displayTeam'),
+      engine: ref('displayEngine'),
+      power: ref('displayPower'),
+      tags: ref('displayTags'),
+    },
+    lut: {
+      torque: ref('lutTorque'),
+      auto: ref('lutAuto'),
+    },
+    chart: ref<HTMLCanvasElement>('chart'),
+    buttons: {
+      generate: ref('btnGenerate'),
+      randomize: ref('btnRandomize'),
+      copyTorque: ref('btnCopyTorque'),
+      copyAuto: ref('btnCopyAuto'),
+    },
+  };
+}
