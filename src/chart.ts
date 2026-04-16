@@ -1,12 +1,39 @@
 import type { LutPoint } from './types';
 
+interface DrawData {
+  canvas: HTMLCanvasElement;
+  lut: LutPoint[];
+  maxRpm: number;
+  peakTorque: number;
+  maxPower: number;
+}
+
+let currentData: DrawData | null = null;
+
+function interpolateAt(lut: LutPoint[], rpm: number): { torque: number; power: number } {
+  for (let i = 1; i < lut.length; i++) {
+    if (lut[i].rpm >= rpm) {
+      const a = lut[i - 1], b = lut[i];
+      const t = b.rpm === a.rpm ? 0 : (rpm - a.rpm) / (b.rpm - a.rpm);
+      const torque = a.torque + (b.torque - a.torque) * t;
+      const power = (torque * rpm * Math.PI / 30) / 735.5;
+      return { torque, power };
+    }
+  }
+  const last = lut[lut.length - 1];
+  return { torque: last.torque, power: (last.torque * last.rpm * Math.PI / 30) / 735.5 };
+}
+
 export function drawChart(
   canvas: HTMLCanvasElement,
   lut: LutPoint[],
   maxRpm: number,
   peakTorque: number,
   _maxPower: number,
+  hoverRpm: number | null = null,
 ): void {
+  currentData = { canvas, lut, maxRpm, peakTorque, maxPower: _maxPower };
+
   const wrap = canvas.parentElement!;
   const ctx = canvas.getContext('2d')!;
   const W = wrap.clientWidth;
@@ -80,4 +107,86 @@ export function drawChart(
     const val = Math.round(unifiedMax * (1 - i / 4));
     ctx.fillText(String(val), pad.l - 4, pad.t + (H - pad.t - pad.b) * i / 4 + 3);
   }
+
+  // hover overlay
+  if (hoverRpm !== null && lut.length > 1) {
+    const x = toX(hoverRpm);
+
+    // vertical crosshair
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.moveTo(x, pad.t);
+    ctx.lineTo(x, H - pad.b);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const { torque, power } = interpolateAt(lut, hoverRpm);
+    const yTorque = toY(torque, unifiedMax);
+    const yPower = toY(power, unifiedMax);
+
+    // dot on power curve
+    ctx.beginPath();
+    ctx.fillStyle = '#e84060';
+    ctx.arc(x, yPower, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // dot on torque curve
+    ctx.beginPath();
+    ctx.fillStyle = '#e8c840';
+    ctx.arc(x, yTorque, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // tooltip
+    const tipW = 108, tipH = 58, tipPad = 8;
+    const tipX = hoverRpm > maxRpm * 0.6 ? x - tipW - 10 : x + 10;
+    const tipY = pad.t + 8;
+
+    ctx.fillStyle = 'rgba(8, 8, 18, 0.88)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.roundRect(tipX, tipY, tipW, tipH, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.font = '9px Share Tech Mono, monospace';
+
+    ctx.fillStyle = 'rgba(140,140,170,0.85)';
+    ctx.fillText(`${Math.round(hoverRpm).toLocaleString()} RPM`, tipX + tipPad, tipY + 15);
+
+    ctx.fillStyle = '#e84060';
+    ctx.fillText(`PWR  ${Math.round(power)} PS`, tipX + tipPad, tipY + 32);
+
+    ctx.fillStyle = '#e8c840';
+    ctx.fillText(`TRQ  ${Math.round(torque)} N·m`, tipX + tipPad, tipY + 49);
+  }
+}
+
+export function setupChartHover(canvas: HTMLCanvasElement): void {
+  canvas.addEventListener('mousemove', (e) => {
+    if (!currentData) return;
+    const { lut, maxRpm, peakTorque, maxPower } = currentData;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const W = rect.width;
+    const pad = { l: 48, r: 48 };
+
+    if (mouseX < pad.l || mouseX > W - pad.r) {
+      drawChart(canvas, lut, maxRpm, peakTorque, maxPower);
+      return;
+    }
+
+    const rpm = ((mouseX - pad.l) / (W - pad.l - pad.r)) * maxRpm;
+    drawChart(canvas, lut, maxRpm, peakTorque, maxPower, Math.max(0, Math.min(maxRpm, rpm)));
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    if (!currentData) return;
+    const { lut, maxRpm, peakTorque, maxPower } = currentData;
+    drawChart(canvas, lut, maxRpm, peakTorque, maxPower);
+  });
 }
