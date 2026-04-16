@@ -28,6 +28,9 @@ export interface InputState {
   maxPower: number;
   seed: number;
   lutStep: number;
+  peakPos: number;    // 0.30–0.85 — where in RPM range the torque peak lands
+  sharpness: number;  // 0.50–2.50 — curve peakiness (t^sharpness transform)
+  noise: number;      // 0.00–0.15 — random variation amplitude
 }
 
 export interface ComputedResult {

@@ -72,6 +72,27 @@
     <hr class="divider">
 
     <div class="field-group">
+      <label class="section-comment">// CURVE SHAPE</label>
+
+      <div class="slider-field">
+        <div class="slider-label"><span>Peak position</span><span id="peakPosVal">52%</span></div>
+        <input type="range" id="peakPos" min="30" max="85" value="52" step="1">
+      </div>
+
+      <div class="slider-field">
+        <div class="slider-label"><span>Sharpness</span><span id="sharpnessVal">1.00</span></div>
+        <input type="range" id="sharpness" min="50" max="250" value="100" step="5">
+      </div>
+
+      <div class="slider-field">
+        <div class="slider-label"><span>Noise</span><span id="noiseVal">3%</span></div>
+        <input type="range" id="noise" min="0" max="15" value="3" step="1">
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="field-group">
       <label>Computed Stats</label>
       <div class="stat-row"><span>Peak Torque</span><span id="statTorque">—</span></div>
       <div class="stat-row"><span>Peak at RPM</span><span id="statRpm">—</span></div>

@@ -1,5 +1,19 @@
 import type { EngineConfig, EngineType, PowerCharacter } from './types';
 
+export interface CharDefaults {
+  peakPos: number;    // slider integer (30–85)
+  sharpness: number;  // slider integer (50–250)
+  noise: number;      // slider integer (0–15)
+}
+
+export const charDefaults: Record<PowerCharacter, CharDefaults> = {
+  early: { peakPos: 35, sharpness: 85,  noise: 3 },
+  mid:   { peakPos: 52, sharpness: 100, noise: 3 },
+  late:  { peakPos: 65, sharpness: 115, noise: 3 },
+  sharp: { peakPos: 70, sharpness: 180, noise: 5 },
+  flat:  { peakPos: 45, sharpness: 65,  noise: 2 },
+};
+
 export const engineDefaults: Record<EngineType, EngineConfig> = {
   v8:  { powerRange: [680, 800], charOptions: ['early', 'flat'],  rpmPref: 13500 },
   v10: { powerRange: [790, 850], charOptions: ['mid', 'flat'],    rpmPref: 13500 },

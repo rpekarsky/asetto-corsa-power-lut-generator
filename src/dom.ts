@@ -9,6 +9,9 @@ export interface DomRefs {
     maxPower: HTMLInputElement;
     lutStep: HTMLInputElement;
     seed: HTMLInputElement;
+    peakPos: HTMLInputElement;
+    sharpness: HTMLInputElement;
+    noise: HTMLInputElement;
   };
   stats: {
     torque: HTMLElement;
@@ -21,6 +24,9 @@ export interface DomRefs {
     engine: HTMLElement;
     power: HTMLElement;
     tags: HTMLElement;
+    peakPosVal: HTMLElement;
+    sharpnessVal: HTMLElement;
+    noiseVal: HTMLElement;
   };
   lut: {
     torque: HTMLElement;
@@ -54,6 +60,9 @@ export function collectRefs(): DomRefs {
       maxPower: ref<HTMLInputElement>('maxPower'),
       lutStep: ref<HTMLInputElement>('lutStep'),
       seed: ref<HTMLInputElement>('seed'),
+      peakPos: ref<HTMLInputElement>('peakPos'),
+      sharpness: ref<HTMLInputElement>('sharpness'),
+      noise: ref<HTMLInputElement>('noise'),
     },
     stats: {
       torque: ref('statTorque'),
@@ -66,6 +75,9 @@ export function collectRefs(): DomRefs {
       engine: ref('displayEngine'),
       power: ref('displayPower'),
       tags: ref('displayTags'),
+      peakPosVal: ref('peakPosVal'),
+      sharpnessVal: ref('sharpnessVal'),
+      noiseVal: ref('noiseVal'),
     },
     lut: {
       torque: ref('lutTorque'),

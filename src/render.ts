@@ -14,6 +14,16 @@ export function syncInputs(state: AppState, refs: DomRefs): void {
   refs.inputs.maxPower.value = String(inputs.maxPower);
   refs.inputs.lutStep.value = String(inputs.lutStep);
   refs.inputs.seed.value = String(inputs.seed);
+
+  const peakPosInt = Math.round(inputs.peakPos * 100);
+  const sharpnessInt = Math.round(inputs.sharpness * 100);
+  const noiseInt = Math.round(inputs.noise * 100);
+  refs.inputs.peakPos.value = String(peakPosInt);
+  refs.inputs.sharpness.value = String(sharpnessInt);
+  refs.inputs.noise.value = String(noiseInt);
+  refs.display.peakPosVal.textContent = `${peakPosInt}%`;
+  refs.display.sharpnessVal.textContent = (inputs.sharpness).toFixed(2);
+  refs.display.noiseVal.textContent = `${noiseInt}%`;
 }
 
 /** Render computed results to DOM */

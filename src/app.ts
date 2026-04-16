@@ -1,6 +1,6 @@
 import type { AppState, EngineType, InputState, PowerCharacter } from './types';
 import type { DomRefs } from './dom';
-import { engineDefaults, ENGINE_NAMES, ENGINE_TYPES, CHARACTERS, RPMS, TEAM_NAMES } from './constants';
+import { engineDefaults, charDefaults, ENGINE_NAMES, ENGINE_TYPES, CHARACTERS, RPMS, TEAM_NAMES } from './constants';
 import { compute } from './engine';
 import { render, syncInputs, redrawChart } from './render';
 
@@ -32,6 +32,9 @@ function readInputs(refs: DomRefs): InputState {
     maxPower: parseInt(refs.inputs.maxPower.value) || 820,
     seed: seedValue ? (parseInt(seedValue) || 0) : newSeed(),
     lutStep: parseInt(refs.inputs.lutStep.value) || 500,
+    peakPos: (parseInt(refs.inputs.peakPos.value) || 52) / 100,
+    sharpness: (parseInt(refs.inputs.sharpness.value) || 100) / 100,
+    noise: (parseInt(refs.inputs.noise.value) || 0) / 100,
   };
 }
 
@@ -62,13 +65,23 @@ export function createApp(refs: DomRefs) {
     debounceTimer = setTimeout(update, 250);
   }
 
+  function applyCharacterDefaults() {
+    const character = refs.inputs.character.value as PowerCharacter;
+    const def = charDefaults[character];
+    refs.inputs.peakPos.value = String(def.peakPos);
+    refs.inputs.sharpness.value = String(def.sharpness);
+    refs.inputs.noise.value = String(def.noise);
+    update();
+  }
+
   function randomize() {
     const et = pick(ENGINE_TYPES);
     const def = engineDefaults[et];
     const ps = def.powerRange[0] + Math.round(Math.random() * (def.powerRange[1] - def.powerRange[0]));
+    const character = pick(CHARACTERS);
 
     refs.inputs.engineType.value = et;
-    refs.inputs.character.value = pick(CHARACTERS);
+    refs.inputs.character.value = character;
     refs.inputs.maxRpm.value = pick(RPMS);
     refs.inputs.maxRpm.classList.remove('hidden');
     refs.inputs.maxRpmCustom.classList.add('hidden');
@@ -77,6 +90,11 @@ export function createApp(refs: DomRefs) {
     refs.inputs.teamName.value = pick(TEAM_NAMES);
     refs.inputs.engineName.value = pick(ENGINE_NAMES);
     refs.inputs.seed.value = '';
+
+    const cd = charDefaults[character];
+    refs.inputs.peakPos.value = String(cd.peakPos);
+    refs.inputs.sharpness.value = String(cd.sharpness);
+    refs.inputs.noise.value = String(cd.noise);
 
     update();
   }
@@ -112,5 +130,5 @@ export function createApp(refs: DomRefs) {
     redrawChart(state, refs);
   }
 
-  return { generate, update, debouncedUpdate, randomize, copyLut, handleResize, toggleRpm };
+  return { generate, update, debouncedUpdate, randomize, applyCharacterDefaults, copyLut, handleResize, toggleRpm };
 }

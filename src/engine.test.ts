@@ -50,37 +50,60 @@ describe('buildRpmGrid', () => {
 
 describe('buildShape', () => {
   it('produces 25 points for steps=24', () => {
-    const shape = buildShape('mid', 42);
+    const shape = buildShape('mid', 42, 0.52, 1.0, 0.03);
     expect(shape.length).toBe(25);
   });
 
   it('starts at r=0, ends at r=1', () => {
-    const shape = buildShape('mid', 42);
+    const shape = buildShape('mid', 42, 0.52, 1.0, 0.03);
     expect(shape[0].r).toBe(0);
     expect(shape[shape.length - 1].r).toBe(1);
   });
 
   it('same seed = same result', () => {
-    const a = buildShape('mid', 12345);
-    const b = buildShape('mid', 12345);
+    const a = buildShape('mid', 12345, 0.52, 1.0, 0.03);
+    const b = buildShape('mid', 12345, 0.52, 1.0, 0.03);
     expect(a).toEqual(b);
   });
 
   it('different seed = different result', () => {
-    const a = buildShape('mid', 1);
-    const b = buildShape('mid', 2);
+    const a = buildShape('mid', 1, 0.52, 1.0, 0.03);
+    const b = buildShape('mid', 2, 0.52, 1.0, 0.03);
     const same = a.every((p, i) => p.t === b[i].t);
     expect(same).toBe(false);
   });
 
   it('all t values are between 0 and 1', () => {
     for (const char of ['early', 'mid', 'late', 'sharp', 'flat'] as const) {
-      const shape = buildShape(char, 999);
+      const shape = buildShape(char, 999, 0.52, 1.0, 0.03);
       for (const p of shape) {
         expect(p.t).toBeGreaterThanOrEqual(0);
         expect(p.t).toBeLessThanOrEqual(1);
       }
     }
+  });
+
+  it('peak lands at requested peakPos (±5%)', () => {
+    for (const targetPos of [0.35, 0.52, 0.70] as const) {
+      const shape = buildShape('mid', 42, targetPos, 1.0, 0.0);
+      let peakIdx = 0;
+      shape.forEach((p, i) => { if (p.t > shape[peakIdx].t) peakIdx = i; });
+      expect(shape[peakIdx].r).toBeCloseTo(targetPos, 1);
+    }
+  });
+
+  it('higher sharpness narrows the peak', () => {
+    const wide  = buildShape('mid', 42, 0.52, 0.5, 0.0);
+    const sharp = buildShape('mid', 42, 0.52, 2.0, 0.0);
+    // count points above 80% of max
+    const above = (pts: typeof wide) => pts.filter(p => p.t > 0.8).length;
+    expect(above(sharp)).toBeLessThan(above(wide));
+  });
+
+  it('noise=0 gives identical output for same seed', () => {
+    const a = buildShape('mid', 42, 0.52, 1.0, 0.0);
+    const b = buildShape('mid', 42, 0.52, 1.0, 0.0);
+    expect(a).toEqual(b);
   });
 });
 
@@ -113,6 +136,9 @@ describe('compute (full pipeline)', () => {
     maxPower: 820,
     seed: 42,
     lutStep: 500,
+    peakPos: 0.52,
+    sharpness: 1.0,
+    noise: 0.03,
   };
 
   it('produces more than 20 LUT points with default settings', () => {

@@ -1,4 +1,5 @@
 import type { InputState, LutPoint, ComputedResult, PowerCharacter, ShapePoint } from './types';
+import { charDefaults } from './constants';
 
 // mulberry32 — fast seeded PRNG
 function mulberry32(seed: number): () => number {
@@ -11,9 +12,16 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-function buildShape(character: PowerCharacter, seed: number, steps = 24): ShapePoint[] {
+function buildShape(
+  character: PowerCharacter,
+  seed: number,
+  peakPos: number,
+  sharpness: number,
+  noise: number,
+  steps = 24,
+): ShapePoint[] {
   const rand = mulberry32(seed);
-  const pts: ShapePoint[] = [];
+  const raw: { r: number; t: number }[] = [];
 
   for (let i = 0; i <= steps; i++) {
     const r = i / steps;
@@ -26,8 +34,7 @@ function buildShape(character: PowerCharacter, seed: number, steps = 24): ShapeP
       t = Math.pow(Math.sin(r * Math.PI * 0.85 + 0.08), 0.75);
       if (r < 0.15) t *= r / 0.15;
     } else if (character === 'sharp') {
-      const peak = 0.70;
-      t = Math.exp(-Math.pow((r - peak) / 0.22, 2));
+      t = Math.exp(-Math.pow((r - 0.70) / 0.22, 2));
       if (r < 0.1) t *= r / 0.1;
     } else if (character === 'flat') {
       if (r < 0.25) t = r / 0.25;
@@ -39,13 +46,26 @@ function buildShape(character: PowerCharacter, seed: number, steps = 24): ShapeP
       if (r < 0.1) t *= r / 0.1;
     }
 
-    t = Math.max(0, t);
-    pts.push({ r, t });
+    raw.push({ r, t: Math.max(0, t) });
   }
 
-  return pts.map(p => ({
-    r: p.r,
-    t: Math.min(1, p.t * (1 + (rand() - 0.5) * 0.06)),
+  // Find natural peak to remap r-axis so it lands at peakPos
+  let peakIdx = 0;
+  for (let i = 1; i < raw.length; i++) {
+    if (raw[i].t > raw[peakIdx].t) peakIdx = i;
+  }
+  const rPeak = raw[peakIdx].r;
+  const remap = (r: number): number => {
+    if (rPeak <= 0 || rPeak >= 1) return r;
+    if (r <= rPeak) return (r / rPeak) * peakPos;
+    return peakPos + ((r - rPeak) / (1 - rPeak)) * (1 - peakPos);
+  };
+
+  return raw.map(p => ({
+    r: remap(p.r),
+    t: Math.min(1, Math.max(0,
+      Math.pow(p.t, sharpness) * (1 + (rand() - 0.5) * 2 * noise),
+    )),
   }));
 }
 
@@ -105,9 +125,9 @@ export const _test = { buildShape, buildRpmGrid, interpolateShape, computeLut };
 
 /** Pure computation: inputs → result. No DOM, no side effects. */
 export function compute(inputs: InputState): ComputedResult {
-  const { character, maxRpm, maxPower, seed, lutStep } = inputs;
+  const { character, maxRpm, maxPower, seed, lutStep, peakPos, sharpness, noise } = inputs;
 
-  const shape = buildShape(character, seed);
+  const shape = buildShape(character, seed, peakPos, sharpness, noise);
 
   let peakIdx = 0;
   shape.forEach((p, i) => { if (p.t > shape[peakIdx].t) peakIdx = i; });
