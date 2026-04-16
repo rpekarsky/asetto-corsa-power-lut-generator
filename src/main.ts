@@ -16,11 +16,11 @@ refs.buttons.toggleRpm.addEventListener('click', app.toggleRpm);
 refs.inputs.character.addEventListener('change', app.applyCharacterDefaults);
 
 // live update on text/select changes
-const textInputs = [refs.inputs.maxPower, refs.inputs.maxRpmCustom, refs.inputs.lutStep, refs.inputs.teamName, refs.inputs.engineName, refs.inputs.seed];
+const textInputs = [refs.inputs.maxPower, refs.inputs.peakTorque, refs.inputs.maxRpmCustom, refs.inputs.lutStep, refs.inputs.teamName, refs.inputs.engineName, refs.inputs.seed];
 for (const el of textInputs) {
   el.addEventListener('input', app.debouncedUpdate);
 }
-for (const el of [refs.inputs.engineType, refs.inputs.maxRpm]) {
+for (const el of [refs.inputs.maxRpm]) {
   el.addEventListener('change', app.debouncedUpdate);
 }
 
@@ -39,4 +39,4 @@ for (const { input, label, fmt } of sliders) {
 
 window.addEventListener('resize', app.handleResize);
 
-app.randomize();
+if (!app.restore()) app.randomize();

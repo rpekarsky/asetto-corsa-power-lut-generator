@@ -1,4 +1,4 @@
-import type { EngineConfig, EngineType, PowerCharacter } from './types';
+import type { PowerCharacter } from './types';
 
 export interface CharDefaults {
   peakPos: number;    // slider integer (30–85)
@@ -14,12 +14,7 @@ export const charDefaults: Record<PowerCharacter, CharDefaults> = {
   flat:  { peakPos: 45, sharpness: 65,  noise: 2 },
 };
 
-export const engineDefaults: Record<EngineType, EngineConfig> = {
-  v8:  { powerRange: [680, 800], charOptions: ['early', 'flat'],  rpmPref: 13500 },
-  v10: { powerRange: [790, 850], charOptions: ['mid', 'flat'],    rpmPref: 13500 },
-  v12: { powerRange: [840, 920], charOptions: ['late', 'sharp'],  rpmPref: 15000 },
-  v40: { powerRange: [820, 880], charOptions: ['sharp', 'mid'],   rpmPref: 16500 },
-};
+export const POWER_RANGE: [number, number] = [680, 920];
 
 export const charTags: Record<PowerCharacter, string[]> = {
   early: ['broad torque', 'low-end pull', 'forgiving'],
@@ -39,6 +34,5 @@ export const ENGINE_NAMES = [
   'Olympus V12', 'Nexus V10', 'Titan V8', 'Helix V12', 'Pulsar V10',
 ];
 
-export const ENGINE_TYPES: EngineType[] = ['v8', 'v10', 'v12', 'v40'];
 export const CHARACTERS: PowerCharacter[] = ['early', 'mid', 'late', 'sharp', 'flat'];
 export const RPMS = ['12000', '13500', '15000', '16500'];

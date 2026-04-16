@@ -1,8 +1,9 @@
-import type { AppState, EngineType, InputState, PowerCharacter } from './types';
+import type { AppState, InputState, PowerCharacter } from './types';
 import type { DomRefs } from './dom';
-import { engineDefaults, charDefaults, ENGINE_NAMES, ENGINE_TYPES, CHARACTERS, RPMS, TEAM_NAMES } from './constants';
+import { charDefaults, ENGINE_NAMES, CHARACTERS, RPMS, TEAM_NAMES, POWER_RANGE } from './constants';
 import { compute } from './engine';
 import { render, syncInputs, redrawChart } from './render';
+import { saveState, loadState } from './storage';
 
 function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -26,10 +27,10 @@ function readInputs(refs: DomRefs): InputState {
   return {
     teamName: refs.inputs.teamName.value,
     engineName: refs.inputs.engineName.value,
-    engineType: refs.inputs.engineType.value as EngineType,
     character: refs.inputs.character.value as PowerCharacter,
     maxRpm: parseInt(rpmSource) || 13500,
     maxPower: parseInt(refs.inputs.maxPower.value) || 820,
+    peakTorqueOverride: (() => { const v = parseInt(refs.inputs.peakTorque.value); return v > 0 ? v : null; })(),
     seed: seedValue ? (parseInt(seedValue) || 0) : newSeed(),
     lutStep: parseInt(refs.inputs.lutStep.value) || 500,
     peakPos: (parseInt(refs.inputs.peakPos.value) || 52) / 100,
@@ -51,6 +52,41 @@ export function createApp(refs: DomRefs) {
     state.computed = compute(state.inputs);
     syncInputs(state, refs);
     render(state, refs);
+    saveState(state.inputs);
+  }
+
+  function restore(): boolean {
+    const saved = loadState();
+    if (!saved) return false;
+
+    if (saved.teamName !== undefined) refs.inputs.teamName.value = saved.teamName;
+    if (saved.engineName !== undefined) refs.inputs.engineName.value = saved.engineName;
+    if (saved.character !== undefined) refs.inputs.character.value = saved.character;
+    if (saved.maxPower !== undefined) refs.inputs.maxPower.value = String(saved.maxPower);
+    if (saved.peakTorqueOverride !== undefined) refs.inputs.peakTorque.value = saved.peakTorqueOverride != null ? String(saved.peakTorqueOverride) : '';
+    if (saved.lutStep !== undefined) refs.inputs.lutStep.value = String(saved.lutStep);
+    if (saved.seed !== undefined) refs.inputs.seed.value = String(saved.seed);
+    if (saved.peakPos !== undefined) refs.inputs.peakPos.value = String(Math.round(saved.peakPos * 100));
+    if (saved.sharpness !== undefined) refs.inputs.sharpness.value = String(Math.round(saved.sharpness * 100));
+    if (saved.noise !== undefined) refs.inputs.noise.value = String(Math.round(saved.noise * 100));
+
+    if (saved.maxRpm !== undefined) {
+      const rpmStr = String(saved.maxRpm);
+      if (RPMS.includes(rpmStr)) {
+        refs.inputs.maxRpm.value = rpmStr;
+        refs.inputs.maxRpm.classList.remove('hidden');
+        refs.inputs.maxRpmCustom.classList.add('hidden');
+        refs.buttons.toggleRpm.classList.remove('active');
+      } else {
+        refs.inputs.maxRpmCustom.value = rpmStr;
+        refs.inputs.maxRpm.classList.add('hidden');
+        refs.inputs.maxRpmCustom.classList.remove('hidden');
+        refs.buttons.toggleRpm.classList.add('active');
+      }
+    }
+
+    update();
+    return true;
   }
 
   /** Generate = new seed + recompute */
@@ -62,7 +98,7 @@ export function createApp(refs: DomRefs) {
   /** Debounced update for live parameter changes */
   function debouncedUpdate() {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(update, 250);
+    debounceTimer = setTimeout(update, 100);
   }
 
   function applyCharacterDefaults() {
@@ -75,18 +111,16 @@ export function createApp(refs: DomRefs) {
   }
 
   function randomize() {
-    const et = pick(ENGINE_TYPES);
-    const def = engineDefaults[et];
-    const ps = def.powerRange[0] + Math.round(Math.random() * (def.powerRange[1] - def.powerRange[0]));
+    const ps = POWER_RANGE[0] + Math.round(Math.random() * (POWER_RANGE[1] - POWER_RANGE[0]));
     const character = pick(CHARACTERS);
 
-    refs.inputs.engineType.value = et;
     refs.inputs.character.value = character;
     refs.inputs.maxRpm.value = pick(RPMS);
     refs.inputs.maxRpm.classList.remove('hidden');
     refs.inputs.maxRpmCustom.classList.add('hidden');
     refs.buttons.toggleRpm.classList.remove('active');
     refs.inputs.maxPower.value = String(ps);
+    refs.inputs.peakTorque.value = '';
     refs.inputs.teamName.value = pick(TEAM_NAMES);
     refs.inputs.engineName.value = pick(ENGINE_NAMES);
     refs.inputs.seed.value = '';
@@ -130,5 +164,5 @@ export function createApp(refs: DomRefs) {
     redrawChart(state, refs);
   }
 
-  return { generate, update, debouncedUpdate, randomize, applyCharacterDefaults, copyLut, handleResize, toggleRpm };
+  return { generate, update, debouncedUpdate, randomize, restore, applyCharacterDefaults, copyLut, handleResize, toggleRpm };
 }

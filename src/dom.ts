@@ -2,11 +2,11 @@ export interface DomRefs {
   inputs: {
     teamName: HTMLInputElement;
     engineName: HTMLInputElement;
-    engineType: HTMLSelectElement;
     character: HTMLSelectElement;
     maxRpm: HTMLSelectElement;
     maxRpmCustom: HTMLInputElement;
     maxPower: HTMLInputElement;
+    peakTorque: HTMLInputElement;
     lutStep: HTMLInputElement;
     seed: HTMLInputElement;
     peakPos: HTMLInputElement;
@@ -53,11 +53,11 @@ export function collectRefs(): DomRefs {
     inputs: {
       teamName: ref<HTMLInputElement>('teamName'),
       engineName: ref<HTMLInputElement>('engineName'),
-      engineType: ref<HTMLSelectElement>('engineType'),
       character: ref<HTMLSelectElement>('character'),
       maxRpm: ref<HTMLSelectElement>('maxRpm'),
       maxRpmCustom: ref<HTMLInputElement>('maxRpmCustom'),
       maxPower: ref<HTMLInputElement>('maxPower'),
+      peakTorque: ref<HTMLInputElement>('peakTorque'),
       lutStep: ref<HTMLInputElement>('lutStep'),
       seed: ref<HTMLInputElement>('seed'),
       peakPos: ref<HTMLInputElement>('peakPos'),

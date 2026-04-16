@@ -8,10 +8,10 @@ export function syncInputs(state: AppState, refs: DomRefs): void {
   const { inputs } = state;
   refs.inputs.teamName.value = inputs.teamName;
   refs.inputs.engineName.value = inputs.engineName;
-  refs.inputs.engineType.value = inputs.engineType;
   refs.inputs.character.value = inputs.character;
   refs.inputs.maxRpm.value = String(inputs.maxRpm);
   refs.inputs.maxPower.value = String(inputs.maxPower);
+  refs.inputs.peakTorque.value = inputs.peakTorqueOverride !== null ? String(inputs.peakTorqueOverride) : '';
   refs.inputs.lutStep.value = String(inputs.lutStep);
   refs.inputs.seed.value = String(inputs.seed);
 
@@ -47,7 +47,7 @@ export function render(state: AppState, refs: DomRefs): void {
   setTimeout(() => refs.display.team.classList.remove('flash'), 400);
 
   const engineLabel = inputs.engineName.trim() || '—';
-  refs.display.engine.textContent = `${engineLabel} · ${inputs.engineType.toUpperCase()}`;
+  refs.display.engine.textContent = engineLabel;
 
   // power badge (one of the few places we need structured content)
   refs.display.power.textContent = '';

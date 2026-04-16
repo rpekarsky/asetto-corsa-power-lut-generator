@@ -125,7 +125,7 @@ export const _test = { buildShape, buildRpmGrid, interpolateShape, computeLut };
 
 /** Pure computation: inputs → result. No DOM, no side effects. */
 export function compute(inputs: InputState): ComputedResult {
-  const { character, maxRpm, maxPower, seed, lutStep, peakPos, sharpness, noise } = inputs;
+  const { character, maxRpm, maxPower, seed, lutStep, peakPos, sharpness, noise, peakTorqueOverride } = inputs;
 
   const shape = buildShape(character, seed, peakPos, sharpness, noise);
 
@@ -133,7 +133,7 @@ export function compute(inputs: InputState): ComputedResult {
   shape.forEach((p, i) => { if (p.t > shape[peakIdx].t) peakIdx = i; });
   const peakRpm = Math.round(shape[peakIdx].r * maxRpm / 900) * 900;
 
-  const maxTorqueNm = powerToTorque(maxPower, peakRpm);
+  const maxTorqueNm = peakTorqueOverride ?? powerToTorque(maxPower, peakRpm);
 
   const lut = computeLut(shape, maxRpm, maxTorqueNm, lutStep);
   // zero torque at idle

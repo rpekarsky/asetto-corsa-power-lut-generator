@@ -130,10 +130,10 @@ describe('compute (full pipeline)', () => {
   const defaults: InputState = {
     teamName: 'TEST',
     engineName: 'Test Engine',
-    engineType: 'v10',
     character: 'mid',
     maxRpm: 15000,
     maxPower: 820,
+    peakTorqueOverride: null,
     seed: 42,
     lutStep: 500,
     peakPos: 0.52,
