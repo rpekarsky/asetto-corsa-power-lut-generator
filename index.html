@@ -90,8 +90,17 @@
       <label>Computed Stats</label>
       <div class="stat-row"><span>Peak Torque</span><span id="statTorque">—</span></div>
       <div class="stat-row"><span>Peak at RPM</span><span id="statRpm">—</span></div>
-      <div class="stat-row"><span>Power (7-speed)</span><span id="statPower">—</span></div>
+      <div class="stat-row"><span>In-game Peak Power</span><span id="statPower">—</span></div>
+      <div class="stat-row"><span>at RPM</span><span id="statPowerRpm">—</span></div>
       <div class="stat-row"><span>Usable RPM band</span><span id="statBand">—</span></div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="field-group">
+      <label class="section-comment">// ENGINE.INI (optional)</label>
+      <textarea id="engineIni" placeholder="Paste car's engine.ini here to apply LIMITER, MINIMUM, turbo boost..." spellcheck="false" rows="6"></textarea>
+      <div id="engineIniInfo" class="ini-info">// no engine.ini loaded</div>
     </div>
 
     <hr class="divider">

@@ -38,6 +38,7 @@ const textInputs = [refs.inputs.peakTorque, refs.inputs.maxRpmCustom, refs.input
 for (const el of textInputs) {
   el.addEventListener('input', app.debouncedUpdate);
 }
+refs.inputs.engineIni.addEventListener('input', app.debouncedUpdate);
 refs.inputs.maxPower.addEventListener('blur', app.update);
 for (const el of [refs.inputs.maxRpm]) {
   el.addEventListener('change', app.debouncedUpdate);

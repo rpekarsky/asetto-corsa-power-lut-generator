@@ -1,5 +1,8 @@
-import type { InputState, LutPoint, ComputedResult, PowerCharacter, ShapePoint } from './types';
-import { charDefaults } from './constants';
+import type { InputState, LutPoint, ComputedResult, PowerCharacter, ShapePoint, PowerSamplePoint } from './types';
+import { parseEngineIni, totalBoostAt, type EngineIni } from './iniParser';
+
+const PS_TO_W = 735.49875;
+const RPM_TO_RAD_S = Math.PI / 30;
 
 // mulberry32 — fast seeded PRNG
 function mulberry32(seed: number): () => number {
@@ -106,47 +109,137 @@ function buildRpmGrid(maxRpm: number, step: number): number[] {
   return rpms;
 }
 
-function computeLut(shape: ShapePoint[], maxRpm: number, maxTorqueNm: number, step: number): LutPoint[] {
-  const grid = buildRpmGrid(maxRpm, step);
+interface ScaleResolution {
+  /** Nm per unit of normalized shape — multiply shape t by this to get torque in Nm */
+  torqueScale: number;
+  /** Resulting peak in-game power, PS */
+  peakPower: number;
+  /** RPM where peak power lands */
+  peakPowerRpm: number;
+}
 
+/**
+ * Resolve the torque scale so that the peak in-game power matches the target.
+ * In-game power at RPM = T(rpm) · (1 + Σ boost(rpm)) · ω.
+ * If peakTorqueOverride is set, scale is fixed and peakPower becomes a derived metric.
+ */
+function resolveScale(
+  shape: ShapePoint[],
+  grid: number[],
+  maxRpm: number,
+  targetMaxPowerPs: number,
+  ini: EngineIni | null,
+  peakTorqueOverride: number | null,
+  minimumRpm: number,
+  inversionMaxRpm: number,
+): ScaleResolution {
+  const turbos = ini?.turbos ?? [];
+
+  const samples = grid
+    .filter(rpm => rpm >= minimumRpm && rpm > 0 && rpm <= inversionMaxRpm)
+    .map(rpm => {
+      const t = interpolateShape(shape, rpm / maxRpm);
+      const boostMul = 1 + totalBoostAt(rpm, turbos);
+      return { rpm, t, boostMul, normPower: t * boostMul * rpm * RPM_TO_RAD_S };
+    });
+
+  if (samples.length === 0) {
+    return { torqueScale: 0, peakPower: 0, peakPowerRpm: 0 };
+  }
+
+  let peakSample = samples[0];
+  let peakShapeT = 0;
+  for (const s of samples) {
+    if (s.normPower > peakSample.normPower) peakSample = s;
+    if (s.t > peakShapeT) peakShapeT = s.t;
+  }
+
+  let torqueScale: number;
+  if (peakTorqueOverride !== null && peakShapeT > 0) {
+    // user-locked peak torque (Nm); shape's max is peakShapeT in normalized terms
+    torqueScale = peakTorqueOverride / peakShapeT;
+  } else {
+    // invert peak power: torqueScale · peakSample.normPower = targetMaxPowerPs · PS_TO_W
+    torqueScale = (targetMaxPowerPs * PS_TO_W) / peakSample.normPower;
+  }
+
+  const peakPowerW = torqueScale * peakSample.normPower;
+  return {
+    torqueScale,
+    peakPower: peakPowerW / PS_TO_W,
+    peakPowerRpm: peakSample.rpm,
+  };
+}
+
+function buildSamples(
+  shape: ShapePoint[],
+  grid: number[],
+  maxRpm: number,
+  torqueScale: number,
+  ini: EngineIni | null,
+): PowerSamplePoint[] {
+  const turbos = ini?.turbos ?? [];
   return grid.map(rpm => {
-    const r = rpm / maxRpm;
-    const t = interpolateShape(shape, r);
-    return { rpm, torque: Math.round(t * maxTorqueNm) };
+    const t = interpolateShape(shape, rpm / maxRpm);
+    const torque = t * torqueScale;
+    const boostMul = 1 + totalBoostAt(rpm, turbos);
+    const effectiveTorque = torque * boostMul;
+    const power = (effectiveTorque * rpm * RPM_TO_RAD_S) / PS_TO_W;
+    return { rpm, torque, effectiveTorque, power };
   });
 }
 
-function powerToTorque(ps: number, rpm: number): number {
-  return (ps * 735.5) / (rpm * Math.PI / 30);
-}
-
 // test-only exports
-export const _test = { buildShape, buildRpmGrid, interpolateShape, computeLut };
+export const _test = { buildShape, buildRpmGrid, interpolateShape, resolveScale, buildSamples };
 
 /** Pure computation: inputs → result. No DOM, no side effects. */
 export function compute(inputs: InputState): ComputedResult {
-  const { character, maxRpm, maxPower, seed, lutStep, peakPos, sharpness, noise, peakTorqueOverride } = inputs;
+  const { character, maxRpm, maxPower, seed, lutStep, peakPos, sharpness, noise, peakTorqueOverride, engineIniText } = inputs;
 
-  const shape = buildShape(character, seed, peakPos, sharpness, noise);
-
-  let peakIdx = 0;
-  shape.forEach((p, i) => { if (p.t > shape[peakIdx].t) peakIdx = i; });
-  const peakRpm = Math.round(shape[peakIdx].r * maxRpm / 900) * 900;
-
-  const maxTorqueNm = peakTorqueOverride ?? powerToTorque(maxPower, peakRpm);
-
-  const lut = computeLut(shape, maxRpm, maxTorqueNm, lutStep);
-  // zero torque at idle
-  for (const p of lut) {
-    if (p.rpm <= 300) p.torque = 0;
-    else break;
+  let parsedIni: EngineIni | null = null;
+  if (engineIniText && engineIniText.trim().length > 0) {
+    try { parsedIni = parseEngineIni(engineIniText); } catch { parsedIni = null; }
   }
 
-  const lutAuto = lut.map(p => ({ rpm: p.rpm, torque: Math.round(p.torque * 0.81) }));
+  // LIMITER/MINIMUM only constrain the *physically reachable* range used for peak-power
+  // inversion. The LUT itself spans the full UI maxRpm range so the curve isn't truncated.
+  const limiter = parsedIni?.limiter ?? null;
+  const inversionMaxRpm = limiter !== null && limiter > 0 ? Math.min(maxRpm, limiter) : maxRpm;
+  const minimumRpm = parsedIni?.minimum ?? 0;
 
-  const peakTorque = Math.round(maxTorqueNm);
-  const bandStart = lut.find(p => p.torque > maxTorqueNm * 0.85)?.rpm ?? 0;
-  const bandEnd = [...lut].reverse().find(p => p.torque > maxTorqueNm * 0.85)?.rpm ?? 0;
+  const shape = buildShape(character, seed, peakPos, sharpness, noise);
+  const grid = buildRpmGrid(maxRpm, lutStep);
 
-  return { lut, lutAuto, peakTorque, peakRpm, bandStart, bandEnd };
+  const { torqueScale, peakPower, peakPowerRpm } = resolveScale(
+    shape, grid, maxRpm, maxPower, parsedIni, peakTorqueOverride, minimumRpm, inversionMaxRpm,
+  );
+
+  const samples = buildSamples(shape, grid, maxRpm, torqueScale, parsedIni);
+
+  const lut: LutPoint[] = samples.map(s => ({ rpm: s.rpm, torque: Math.round(s.torque) }));
+  const lutAuto: LutPoint[] = lut.map(p => ({ rpm: p.rpm, torque: Math.round(p.torque * 0.81) }));
+
+  // Stats
+  let peakTorqueIdx = 0;
+  for (let i = 1; i < lut.length; i++) {
+    if (lut[i].torque > lut[peakTorqueIdx].torque) peakTorqueIdx = i;
+  }
+  const peakTorque = lut[peakTorqueIdx]?.torque ?? 0;
+  const peakRpm = lut[peakTorqueIdx]?.rpm ?? 0;
+
+  const bandStart = lut.find(p => p.torque > peakTorque * 0.85)?.rpm ?? 0;
+  const bandEnd = [...lut].reverse().find(p => p.torque > peakTorque * 0.85)?.rpm ?? 0;
+
+  return {
+    lut,
+    lutAuto,
+    peakTorque,
+    peakRpm,
+    peakPower: Math.round(peakPower),
+    peakPowerRpm: Math.round(peakPowerRpm),
+    bandStart,
+    bandEnd,
+    samples,
+    parsedIni,
+  };
 }

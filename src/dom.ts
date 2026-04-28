@@ -12,13 +12,16 @@ export interface DomRefs {
     peakPos: HTMLInputElement;
     sharpness: HTMLInputElement;
     noise: HTMLInputElement;
+    engineIni: HTMLTextAreaElement;
   };
   stats: {
     torque: HTMLElement;
     rpm: HTMLElement;
     power: HTMLElement;
+    powerRpm: HTMLElement;
     band: HTMLElement;
   };
+  engineIniInfo: HTMLElement;
   display: {
     team: HTMLElement;
     engine: HTMLElement;
@@ -63,13 +66,16 @@ export function collectRefs(): DomRefs {
       peakPos: ref<HTMLInputElement>('peakPos'),
       sharpness: ref<HTMLInputElement>('sharpness'),
       noise: ref<HTMLInputElement>('noise'),
+      engineIni: ref<HTMLTextAreaElement>('engineIni'),
     },
     stats: {
       torque: ref('statTorque'),
       rpm: ref('statRpm'),
       power: ref('statPower'),
+      powerRpm: ref('statPowerRpm'),
       band: ref('statBand'),
     },
+    engineIniInfo: ref('engineIniInfo'),
     display: {
       team: ref('displayTeam'),
       engine: ref('displayEngine'),

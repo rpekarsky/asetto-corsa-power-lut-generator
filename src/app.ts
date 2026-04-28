@@ -36,6 +36,7 @@ function readInputs(refs: DomRefs): InputState {
     peakPos: (parseInt(refs.inputs.peakPos.value) || 52) / 100,
     sharpness: (parseInt(refs.inputs.sharpness.value) || 100) / 100,
     noise: (parseInt(refs.inputs.noise.value) || 0) / 100,
+    engineIniText: refs.inputs.engineIni.value,
   };
 }
 
@@ -69,6 +70,7 @@ export function createApp(refs: DomRefs) {
     if (saved.peakPos !== undefined) refs.inputs.peakPos.value = String(Math.round(saved.peakPos * 100));
     if (saved.sharpness !== undefined) refs.inputs.sharpness.value = String(Math.round(saved.sharpness * 100));
     if (saved.noise !== undefined) refs.inputs.noise.value = String(Math.round(saved.noise * 100));
+    if (saved.engineIniText !== undefined) refs.inputs.engineIni.value = saved.engineIniText;
 
     if (saved.maxRpm !== undefined) {
       const rpmStr = String(saved.maxRpm);

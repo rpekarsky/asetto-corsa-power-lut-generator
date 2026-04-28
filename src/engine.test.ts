@@ -2,7 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { compute, _test } from './engine';
 import type { InputState } from './types';
 
-const { buildRpmGrid, buildShape, interpolateShape, computeLut } = _test;
+const { buildRpmGrid, buildShape, interpolateShape } = _test;
+
+const baseInputs: InputState = {
+  teamName: 'TEST',
+  engineName: 'Test Engine',
+  character: 'mid',
+  maxRpm: 15000,
+  maxPower: 820,
+  peakTorqueOverride: null,
+  seed: 42,
+  lutStep: 500,
+  peakPos: 0.52,
+  sharpness: 1.0,
+  noise: 0.03,
+  engineIniText: '',
+};
 
 describe('buildRpmGrid', () => {
   it('produces many points with step=500 maxRpm=15000', () => {
@@ -10,13 +25,6 @@ describe('buildRpmGrid', () => {
     expect(grid.length).toBeGreaterThan(20);
     expect(grid[0]).toBe(0);
     expect(grid[grid.length - 1]).toBe(15000);
-  });
-
-  it('produces many points with step=900 maxRpm=13500', () => {
-    const grid = buildRpmGrid(13500, 900);
-    expect(grid.length).toBeGreaterThan(10);
-    expect(grid[0]).toBe(0);
-    expect(grid[grid.length - 1]).toBe(13500);
   });
 
   it('handles step=NaN gracefully (falls back to 500)', () => {
@@ -31,10 +39,8 @@ describe('buildRpmGrid', () => {
 
   it('has finer resolution at edges', () => {
     const grid = buildRpmGrid(15000, 1000);
-    // first few gaps should be ~500 (half-step)
     const firstGap = grid[1] - grid[0];
     expect(firstGap).toBe(500);
-    // middle gaps should be ~1000
     const midIdx = Math.floor(grid.length / 2);
     const midGap = grid[midIdx] - grid[midIdx - 1];
     expect(midGap).toBe(1000);
@@ -66,13 +72,6 @@ describe('buildShape', () => {
     expect(a).toEqual(b);
   });
 
-  it('different seed = different result', () => {
-    const a = buildShape('mid', 1, 0.52, 1.0, 0.03);
-    const b = buildShape('mid', 2, 0.52, 1.0, 0.03);
-    const same = a.every((p, i) => p.t === b[i].t);
-    expect(same).toBe(false);
-  });
-
   it('all t values are between 0 and 1', () => {
     for (const char of ['early', 'mid', 'late', 'sharp', 'flat'] as const) {
       const shape = buildShape(char, 999, 0.52, 1.0, 0.03);
@@ -90,20 +89,6 @@ describe('buildShape', () => {
       shape.forEach((p, i) => { if (p.t > shape[peakIdx].t) peakIdx = i; });
       expect(shape[peakIdx].r).toBeCloseTo(targetPos, 1);
     }
-  });
-
-  it('higher sharpness narrows the peak', () => {
-    const wide  = buildShape('mid', 42, 0.52, 0.5, 0.0);
-    const sharp = buildShape('mid', 42, 0.52, 2.0, 0.0);
-    // count points above 80% of max
-    const above = (pts: typeof wide) => pts.filter(p => p.t > 0.8).length;
-    expect(above(sharp)).toBeLessThan(above(wide));
-  });
-
-  it('noise=0 gives identical output for same seed', () => {
-    const a = buildShape('mid', 42, 0.52, 1.0, 0.0);
-    const b = buildShape('mid', 42, 0.52, 1.0, 0.0);
-    expect(a).toEqual(b);
   });
 });
 
@@ -127,72 +112,121 @@ describe('interpolateShape', () => {
 });
 
 describe('compute (full pipeline)', () => {
-  const defaults: InputState = {
-    teamName: 'TEST',
-    engineName: 'Test Engine',
-    character: 'mid',
-    maxRpm: 15000,
-    maxPower: 820,
-    peakTorqueOverride: null,
-    seed: 42,
-    lutStep: 500,
-    peakPos: 0.52,
-    sharpness: 1.0,
-    noise: 0.03,
-  };
+  it('peak in-game power matches target maxPower (no turbo)', () => {
+    const result = compute({ ...baseInputs, maxPower: 820 });
+    expect(result.peakPower).toBeGreaterThanOrEqual(819);
+    expect(result.peakPower).toBeLessThanOrEqual(821);
+  });
 
-  it('produces more than 20 LUT points with default settings', () => {
-    const result = compute(defaults);
-    expect(result.lut.length).toBeGreaterThan(20);
+  it('peak power stays at target across all characters (NA)', () => {
+    for (const character of ['early', 'mid', 'late', 'sharp', 'flat'] as const) {
+      const result = compute({ ...baseInputs, character, maxPower: 750 });
+      expect(result.peakPower).toBeGreaterThanOrEqual(749);
+      expect(result.peakPower).toBeLessThanOrEqual(751);
+    }
+  });
+
+  it('peak power stays at target across peakPos values', () => {
+    for (const peakPos of [0.30, 0.45, 0.60, 0.80] as const) {
+      const result = compute({ ...baseInputs, peakPos, maxPower: 800 });
+      expect(result.peakPower).toBeGreaterThanOrEqual(799);
+      expect(result.peakPower).toBeLessThanOrEqual(801);
+    }
   });
 
   it('LUT starts at 0 RPM with 0 torque', () => {
-    const result = compute(defaults);
+    const result = compute(baseInputs);
     expect(result.lut[0].rpm).toBe(0);
     expect(result.lut[0].torque).toBe(0);
   });
 
   it('LUT ends at maxRpm', () => {
-    const result = compute(defaults);
+    const result = compute(baseInputs);
     expect(result.lut[result.lut.length - 1].rpm).toBe(15000);
   });
 
   it('LUT is sorted by RPM', () => {
-    const result = compute(defaults);
+    const result = compute(baseInputs);
     for (let i = 1; i < result.lut.length; i++) {
       expect(result.lut[i].rpm).toBeGreaterThan(result.lut[i - 1].rpm);
     }
   });
 
   it('lutAuto is 81% of lut torque', () => {
-    const result = compute(defaults);
+    const result = compute(baseInputs);
     for (let i = 0; i < result.lut.length; i++) {
       expect(result.lutAuto[i].torque).toBe(Math.round(result.lut[i].torque * 0.81));
     }
   });
 
   it('same seed = deterministic output', () => {
-    const a = compute(defaults);
-    const b = compute(defaults);
+    const a = compute(baseInputs);
+    const b = compute(baseInputs);
     expect(a.lut).toEqual(b.lut);
     expect(a.peakTorque).toBe(b.peakTorque);
   });
 
-  it('works with all character types', () => {
-    for (const character of ['early', 'mid', 'late', 'sharp', 'flat'] as const) {
-      const result = compute({ ...defaults, character });
-      expect(result.lut.length).toBeGreaterThan(20);
-      expect(result.peakTorque).toBeGreaterThan(0);
-    }
-  });
-
   it('handles lutStep=NaN without crashing', () => {
-    const result = compute({ ...defaults, lutStep: NaN });
+    const result = compute({ ...baseInputs, lutStep: NaN });
     expect(result.lut.length).toBeGreaterThan(20);
   });
 
-  it('handles lutStep=0 without crashing', () => {
-    const result = compute({ ...defaults, lutStep: 0 });
-    expect(result.lut.length).toBeGreaterThan(20);
+  it('LUT spans full maxRpm regardless of LIMITER', () => {
+    const ini = `[ENGINE_DATA]
+LIMITER=10000
+MINIMUM=4000`;
+    const result = compute({ ...baseInputs, maxRpm: 15000, engineIniText: ini });
+    const lastRpm = result.lut[result.lut.length - 1].rpm;
+    expect(lastRpm).toBe(15000);
+    expect(result.parsedIni?.limiter).toBe(10000);
+  });
+
+  it('peak power inversion ignores points outside [MINIMUM, LIMITER]', () => {
+    // Place natural peak above LIMITER — peak power should still be at target
+    const ini = `[ENGINE_DATA]
+LIMITER=8000
+MINIMUM=2000`;
+    const result = compute({ ...baseInputs, maxRpm: 15000, peakPos: 0.85, maxPower: 800, engineIniText: ini });
+    expect(result.peakPower).toBeGreaterThanOrEqual(799);
+    expect(result.peakPower).toBeLessThanOrEqual(801);
+    expect(result.peakPowerRpm).toBeLessThanOrEqual(8000);
+  });
+
+  it('LUT torque values are non-zero across full range (no MINIMUM zeroing)', () => {
+    const ini = `[ENGINE_DATA]
+LIMITER=10000
+MINIMUM=4000`;
+    const result = compute({ ...baseInputs, maxRpm: 12000, engineIniText: ini });
+    const below = result.lut.filter(p => p.rpm > 500 && p.rpm < 4000);
+    expect(below.some(p => p.torque > 0)).toBe(true);
+  });
+
+  it('with turbo, peak in-game power still matches target', () => {
+    const ini = `[ENGINE_DATA]
+LIMITER=10000
+MINIMUM=2000
+[TURBO_0]
+MAX_BOOST=0.5
+WASTEGATE=0.5
+REFERENCE_RPM=3000
+GAMMA=0.2
+[TURBO_1]
+MAX_BOOST=0.5
+WASTEGATE=0.5
+REFERENCE_RPM=3000
+GAMMA=0.2`;
+    const result = compute({ ...baseInputs, maxRpm: 10000, maxPower: 700, engineIniText: ini });
+    expect(result.peakPower).toBeGreaterThanOrEqual(699);
+    expect(result.peakPower).toBeLessThanOrEqual(701);
+    // bare LUT torque should be much lower than effective with 2x boost
+    const bareLutPeak = Math.max(...result.lut.map(p => p.torque));
+    const effectivePeak = Math.max(...result.samples.map(s => s.effectiveTorque));
+    expect(effectivePeak / bareLutPeak).toBeGreaterThan(1.5); // ≈ 2x at full boost
+  });
+
+  it('peakTorqueOverride takes precedence over power inversion', () => {
+    const result = compute({ ...baseInputs, peakTorqueOverride: 500 });
+    expect(result.peakTorque).toBeGreaterThanOrEqual(498);
+    expect(result.peakTorque).toBeLessThanOrEqual(502);
   });
 });

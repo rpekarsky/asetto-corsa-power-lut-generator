@@ -1,38 +1,36 @@
-import type { LutPoint } from './types';
+import type { ComputedResult, PowerSamplePoint } from './types';
 
 interface DrawData {
   canvas: HTMLCanvasElement;
-  lut: LutPoint[];
+  computed: ComputedResult;
   maxRpm: number;
-  peakTorque: number;
-  maxPower: number;
 }
 
 let currentData: DrawData | null = null;
 
-function interpolateAt(lut: LutPoint[], rpm: number): { torque: number; power: number } {
-  for (let i = 1; i < lut.length; i++) {
-    if (lut[i].rpm >= rpm) {
-      const a = lut[i - 1], b = lut[i];
+function interpolateAt(samples: PowerSamplePoint[], rpm: number): { torque: number; power: number } {
+  for (let i = 1; i < samples.length; i++) {
+    if (samples[i].rpm >= rpm) {
+      const a = samples[i - 1], b = samples[i];
       const t = b.rpm === a.rpm ? 0 : (rpm - a.rpm) / (b.rpm - a.rpm);
       const torque = a.torque + (b.torque - a.torque) * t;
-      const power = (torque * rpm * Math.PI / 30) / 735.5;
+      const power = a.power + (b.power - a.power) * t;
       return { torque, power };
     }
   }
-  const last = lut[lut.length - 1];
-  return { torque: last.torque, power: (last.torque * last.rpm * Math.PI / 30) / 735.5 };
+  const last = samples[samples.length - 1];
+  return { torque: last.torque, power: last.power };
 }
 
 export function drawChart(
   canvas: HTMLCanvasElement,
-  lut: LutPoint[],
+  computed: ComputedResult,
   maxRpm: number,
-  peakTorque: number,
-  _maxPower: number,
   hoverRpm: number | null = null,
 ): void {
-  currentData = { canvas, lut, maxRpm, peakTorque, maxPower: _maxPower };
+  currentData = { canvas, computed, maxRpm };
+
+  const { samples, peakTorque, peakPower } = computed;
 
   const wrap = canvas.parentElement!;
   const ctx = canvas.getContext('2d')!;
@@ -72,27 +70,24 @@ export function drawChart(
   function toX(rpm: number) { return pad.l + (W - pad.l - pad.r) * rpm / maxRpm; }
   function toY(val: number, max: number) { return pad.t + (H - pad.t - pad.b) * (1 - val / max); }
 
-  // compute bhp values
-  const bhpData = lut.map(p => (p.torque * p.rpm * Math.PI / 30) / 735.5);
-  const actualMaxBhp = Math.max(...bhpData);
-  const unifiedMax = Math.max(peakTorque, actualMaxBhp) * 1.08;
+  const unifiedMax = Math.max(peakTorque, peakPower) * 1.08;
 
-  // power curve
+  // power curve (uses effective torque under turbo boost — matches what AC shows)
   ctx.beginPath();
   ctx.strokeStyle = '#e84060';
   ctx.lineWidth = 1.5;
-  lut.forEach((p, i) => {
+  samples.forEach((p, i) => {
     const x = toX(p.rpm);
-    const y = toY(bhpData[i], unifiedMax);
+    const y = toY(p.power, unifiedMax);
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.stroke();
 
-  // torque curve
+  // torque curve (LUT bare engine torque — what's written to power.lut)
   ctx.beginPath();
   ctx.strokeStyle = '#e8c840';
   ctx.lineWidth = 2;
-  lut.forEach((p, i) => {
+  samples.forEach((p, i) => {
     const x = toX(p.rpm);
     const y = toY(p.torque, unifiedMax);
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
@@ -109,10 +104,9 @@ export function drawChart(
   }
 
   // hover overlay
-  if (hoverRpm !== null && lut.length > 1) {
+  if (hoverRpm !== null && samples.length > 1) {
     const x = toX(hoverRpm);
 
-    // vertical crosshair
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     ctx.lineWidth = 1;
@@ -122,23 +116,20 @@ export function drawChart(
     ctx.stroke();
     ctx.setLineDash([]);
 
-    const { torque, power } = interpolateAt(lut, hoverRpm);
+    const { torque, power } = interpolateAt(samples, hoverRpm);
     const yTorque = toY(torque, unifiedMax);
     const yPower = toY(power, unifiedMax);
 
-    // dot on power curve
     ctx.beginPath();
     ctx.fillStyle = '#e84060';
     ctx.arc(x, yPower, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // dot on torque curve
     ctx.beginPath();
     ctx.fillStyle = '#e8c840';
     ctx.arc(x, yTorque, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // tooltip
     const tipW = 108, tipH = 58, tipPad = 8;
     const tipX = hoverRpm > maxRpm * 0.6 ? x - tipW - 10 : x + 10;
     const tipY = pad.t + 8;
@@ -168,7 +159,7 @@ export function drawChart(
 export function setupChartHover(canvas: HTMLCanvasElement): void {
   canvas.addEventListener('mousemove', (e) => {
     if (!currentData) return;
-    const { lut, maxRpm, peakTorque, maxPower } = currentData;
+    const { computed, maxRpm } = currentData;
 
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
@@ -176,17 +167,17 @@ export function setupChartHover(canvas: HTMLCanvasElement): void {
     const pad = { l: 48, r: 48 };
 
     if (mouseX < pad.l || mouseX > W - pad.r) {
-      drawChart(canvas, lut, maxRpm, peakTorque, maxPower);
+      drawChart(canvas, computed, maxRpm);
       return;
     }
 
     const rpm = ((mouseX - pad.l) / (W - pad.l - pad.r)) * maxRpm;
-    drawChart(canvas, lut, maxRpm, peakTorque, maxPower, Math.max(0, Math.min(maxRpm, rpm)));
+    drawChart(canvas, computed, maxRpm, Math.max(0, Math.min(maxRpm, rpm)));
   });
 
   canvas.addEventListener('mouseleave', () => {
     if (!currentData) return;
-    const { lut, maxRpm, peakTorque, maxPower } = currentData;
-    drawChart(canvas, lut, maxRpm, peakTorque, maxPower);
+    const { computed, maxRpm } = currentData;
+    drawChart(canvas, computed, maxRpm);
   });
 }
